@@ -35,6 +35,11 @@
     - [Transfer tokens](#transfer-tokens)
     - [CONGRATULATIONS! You have completed the Transfer Token between Chains journey.](#congratulations-you-have-completed-the-transfer-token-between-chains-journey)
     - [My own tech](#my-own-tech)
+  - [M3](#m3)
+    - [Transferring ERC20, paying with native token](#transferring-erc20-paying-with-native-token)
+    - [CCIPTokenSender::transferTokensPayNative function](#cciptokensendertransfertokenspaynative-function)
+    - [Deploying CCIPTokenSender.sol](#deploying-cciptokensendersol)
+    - [CONGRATULATIONS :)](#congratulations--1)
 
 
 
@@ -601,3 +606,274 @@ If you don't want to walk through the process of building the system (NOT RECOMM
 `0x6d098e08094d4c8d5beeb0a07228e9e4fe9dbb3909c62486b24157c868ac830a`
 
 [Chainlink_CCIP_Explorer_Transaction](https://ccip.chain.link/msg/0x6d098e08094d4c8d5beeb0a07228e9e4fe9dbb3909c62486b24157c868ac830a)
+
+## M3
+### Transferring ERC20, paying with native token
+
+We have seen how to transfer tokens from one isolated blockchain to another one. However, to do this, we pay our transaction fees with Link token. In this masterclass, we will make a little change in the business logic. Instead of paying the fees with Link token, we will pay the transaction fee with the native token
+
+### CCIPTokenSender::transferTokensPayNative function
+
+Let's got to place this function in our `CCIPTokenSender.sol`. This function is very similar to `transferTokenPayLinkToken`, however, it has some differences. 
+
+Difference 
+
+The way to inform the Router that we will pay in native coin is by putting  `address(0)` in the `_feeTokenAddress` parameter. Actually, we can see this difference in the piece of code represented below.
+
+```diff
+        Client.EVM2AnyMessage memory message = _buildCcipMessage(
+            _receiver,
+            _token,
+            _amount,
+-            address(linkToken)
++            address(0) 
+        );
+```
+
+Here you can see the entire function. Pay attention to this 
+`_ccipFeesManagement(bool,uint64,Client.EVM2AnyMessage)` function signature. Notice that it has a liitle change and we added a new `bool` argument.
+
+```javascript
+function transferTokensPayNative(
+        uint64 _destinationChainSelector,
+        address _receiver,
+        address _token,
+        uint256 _amount
+    )
+        external
+        onlyOwner
+        onlyWhitelistedChain(_destinationChainSelector)
+        returns (bytes32 messageId)
+    {
+        if (_receiver == address(0)) revert InvalidReceiverAddress();
+        Client.EVM2AnyMessage memory message = _buildCcipMessage(
+            _receiver,
+            _token,
+            _amount,
+            address(0)
+        );
+
+        uint256 fees = _ccipFeesManagement(true, _destinationChainSelector, message);
+
+        IERC20(_token).approve(address(router), _amount);
+
+        messageId = router.ccipSend(_destinationChainSelector, message);
+
+        emit TokensTransferred(
+            messageId,
+            _destinationChainSelector,
+            _receiver,
+            _token,
+            _amount,
+            address(0),
+            fees
+        );
+    }
+
+```
+Here is the entire smart contract modified to accept transferring tokens, paying with the native coin.
+
+```javascript
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.19;
+
+import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
+import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
+import {IERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/contracts/interfaces/IERC20.sol";
+import {ChainsListerOperator} from "./ChainsListerOperator.sol";
+
+contract CCIPTokenSender is ChainsListerOperator {
+    IRouterClient router;
+    IERC20 linkToken;
+
+    address public constant NATIVE_TOKEN =
+        address(uint160(uint256(keccak256(abi.encodePacked("NATIVE_TOKEN")))));
+
+    error InsufficientBalance(uint256 currentBalance, uint256 calculatedFees);
+    error NothingToWithdraw();
+    error InvalidReceiverAddress();
+
+    event TokensTransferred(
+        bytes32 indexed messageId, // The unique ID of the message.
+        uint64 indexed destinationChainSelector, // The chain selector of the destination chain.
+        address receiver, // The address of the receiver on the destination chain.
+        address token, // The token address that was transferred.
+        uint256 tokenAmount, // The token amount that was transferred.
+        address feeToken, // the token address used to pay CCIP fees.
+        uint256 fees // The fees paid for sending the message.
+    );
+
+    event Withdrawal(
+        address indexed beneficiary,
+        address indexed token,
+        uint256 amount
+    );
+
+    constructor(address _router, address _linkToken) {
+        router = IRouterClient(_router);
+        linkToken = IERC20(_linkToken);
+    }
+
+    receive() external payable {}
+
+    function transferTokensPayLinkToken(
+        uint64 _destinationChainSelector,
+        address _receiver,
+        address _token,
+        uint256 _amount
+    )
+        external
+        onlyOwner
+        onlyWhitelistedChain(_destinationChainSelector)
+        returns (bytes32 messageId)
+    {
+        if (_receiver == address(0)) revert InvalidReceiverAddress();
+        Client.EVM2AnyMessage memory message = _buildCcipMessage(
+            _receiver,
+            _token,
+            _amount,
+            address(linkToken)
+        );
+
+        uint256 fees = _ccipFeesManagement(false, _destinationChainSelector, message);
+
+        IERC20(_token).approve(address(router), _amount);
+
+        messageId = router.ccipSend(_destinationChainSelector, message);
+
+        emit TokensTransferred(
+            messageId,
+            _destinationChainSelector,
+            _receiver,
+            _token,
+            _amount,
+            address(linkToken),
+            fees
+        );
+    }
+
+
+   function transferTokensPayNative(
+        uint64 _destinationChainSelector,
+        address _receiver,
+        address _token,
+        uint256 _amount
+    )
+        external
+        onlyOwner
+        onlyWhitelistedChain(_destinationChainSelector)
+        returns (bytes32 messageId)
+    {
+        if (_receiver == address(0)) revert InvalidReceiverAddress();
+        Client.EVM2AnyMessage memory message = _buildCcipMessage(
+            _receiver,
+            _token,
+            _amount,
+            address(0)
+        );
+
+        uint256 fees = _ccipFeesManagement(true, _destinationChainSelector, message);
+
+        IERC20(_token).approve(address(router), _amount);
+
+        messageId = router.ccipSend(_destinationChainSelector, message);
+
+        emit TokensTransferred(
+            messageId,
+            _destinationChainSelector,
+            _receiver,
+            _token,
+            _amount,
+            address(0),
+            fees
+        );
+    }
+
+    
+    function withdraw(address _beneficiary) external {
+        uint256 amount = address(this).balance;
+        if (amount == 0) revert NothingToWithdraw();
+        payable(_beneficiary).transfer(amount);
+        emit Withdrawal(_beneficiary, NATIVE_TOKEN, amount);
+    }
+
+    function withdrawToken(
+        address _beneficiary,
+        address _token
+    ) public onlyOwner {
+        uint256 amount = IERC20(_token).balanceOf(address(this));
+
+        if (amount == 0) revert NothingToWithdraw();
+
+        IERC20(_token).transfer(_beneficiary, amount);
+        emit Withdrawal(_beneficiary, _token, amount);
+    }
+
+    function _buildCcipMessage(
+        address _receiver,
+        address _token,
+        uint256 _amount,
+        address _feeTokenAddress
+    ) private pure returns (Client.EVM2AnyMessage memory message) {
+        Client.EVMTokenAmount[]
+            memory tokenAmounts = new Client.EVMTokenAmount[](1);
+        Client.EVMTokenAmount memory tokenAmount = Client.EVMTokenAmount({
+            token: _token,
+            amount: _amount
+        });
+
+        tokenAmounts[0] = tokenAmount;
+
+        message = Client.EVM2AnyMessage({
+            receiver: abi.encode(_receiver),
+            data: "",
+            tokenAmounts: tokenAmounts,
+            extraArgs: Client._argsToBytes(
+                Client.EVMExtraArgsV1({gasLimit: 0})
+            ),
+            feeToken: _feeTokenAddress
+        });
+    }
+
+    function _ccipFeesManagement(bool _payNative,
+        uint64 _destinationChainSelector,
+        Client.EVM2AnyMessage memory _message
+    ) private returns (uint256 fees) {
+        fees = router.getFee(_destinationChainSelector, _message); 
+        uint256 currentBalance;
+        if (_payNative){
+            currentBalance = address(this).balance;
+            if (fees > currentBalance)
+                revert InsufficientBalance(currentBalance, fees);   
+        }else {
+            currentBalance = linkToken.balanceOf(address(this));
+            if (fees > currentBalance)
+                revert InsufficientBalance(currentBalance, fees);
+            linkToken.approve(address(router), fees);
+        }
+    }
+}
+```
+
+### Deploying CCIPTokenSender.sol
+
+We need to deploy again our `CCIPTokenSender.sol` smart contract, because it has some changes from our latest version already deployed.
+
+Run
+
+```bash
+forge create --rpc-url ethereumSepolia --private-key=$PRIVATE_KEY src/M2/CCIPTokenSender.sol:CCIPTokenSender --contructor-args 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59 0x779877A7B0D9E8603169DdbD7836e478b4624789
+
+```
+
+We need to repeat the process of [funding](#funding-your-cciptokensender), with a difference. Instead of funding with fee Link token we are going to fund with and amount of `0.01` native coin (ETH).
+
+After do the avoce you can repeat the process of [transfer tokens](#transfer-tokens).
+
+
+### CONGRATULATIONS :)
+
+You paid the transaction's fees with native coin, in this case with ETH.
+
+
+
