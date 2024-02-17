@@ -8,7 +8,7 @@ remappings = [
     "@chainlink/contracts-ccip/=/home/blockitus/node_modules/@chainlink/contracts-ccip"
 ]
 
-[compiler]
+[profile.compiler]
 solc_version="0.8.0"
 
 [rpc_endpoints]
