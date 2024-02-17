@@ -1,6 +1,19 @@
 [profile.default]
 src = "src"
 out = "out"
-libs = ["lib"]
+libs = ['node_modules', 'lib']
+
+remappings = [    
+    "@chainlink/contracts/=/home/blockitus/node_modules/@chainlink/contracts",
+    "@chainlink/contracts-ccip/=/home/blockitus/node_modules/@chainlink/contracts-ccip"
+]
+
+[compiler]
+solc_version="0.8.0"
+
+[rpc_endpoints]
+ethereumSepolia = "${ETHEREUM_SEPOLIA_RPC_URL}"
+avalancheFuji = "${AVALANCHE_FUJI_RPC_URL}"
+
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
