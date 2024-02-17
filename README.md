@@ -409,9 +409,9 @@ contract CCIPTokenSender is ChainsListerOperator {
     IRouterClient router;
     IERC20 linkToken;
 
-    address constant public NATIVE_TOKEN = address(uint160(uint256(keccak256(abi.encodePacked("NATIVE_TOKEN")))));
-    
-    
+    address public constant NATIVE_TOKEN =
+        address(uint160(uint256(keccak256(abi.encodePacked("NATIVE_TOKEN")))));
+
     error InsufficientBalance(uint256 currentBalance, uint256 calculatedFees);
     error NothingToWithdraw();
     error InvalidReceiverAddress();
@@ -426,37 +426,45 @@ contract CCIPTokenSender is ChainsListerOperator {
         uint256 fees // The fees paid for sending the message.
     );
 
-    event Withdrawal(address indexed beneficiary, address indexed token, uint256 amount);
-
+    event Withdrawal(
+        address indexed beneficiary,
+        address indexed token,
+        uint256 amount
+    );
 
     constructor(address _router, address _linkToken) {
         router = IRouterClient(_router);
         linkToken = IERC20(_linkToken);
     }
 
-    receive() external payable{}
+    receive() external payable {}
 
-    function transferTokensPaylinkToken(
-        uint64 _destinationChainSelector, 
-        address _receiver, 
-        address _token, 
-        uint256 _amount) external onlyOwner onlyWhitelistedChain(_destinationChainSelector) returns (bytes32 messageId) {
-            
-            if (_receiver == address(0)) revert InvalidReceiverAddress();
-            Client.EVM2AnyMessage memory message = buildCcipMessage(
-                _receiver,
-                _token,
-                _amount,
-                address(linkToken)
-            );
-            
-            uint256 fees = _ccipFeesManagement(_destinationChainSelector, message);
+    function transferTokensPayLinkToken(
+        uint64 _destinationChainSelector,
+        address _receiver,
+        address _token,
+        uint256 _amount
+    )
+        external
+        onlyOwner
+        onlyWhitelistedChain(_destinationChainSelector)
+        returns (bytes32 messageId)
+    {
+        if (_receiver == address(0)) revert InvalidReceiverAddress();
+        Client.EVM2AnyMessage memory message = _buildCcipMessage(
+            _receiver,
+            _token,
+            _amount,
+            address(linkToken)
+        );
 
-            IERC20(_token).approve(address(router), _amount);
+        uint256 fees = _ccipFeesManagement(_destinationChainSelector, message);
 
-            messageId = router.ccipSend(_destinationChainSelector, message); 
+        IERC20(_token).approve(address(router), _amount);
 
-            emit TokensTransferred(
+        messageId = router.ccipSend(_destinationChainSelector, message);
+
+        emit TokensTransferred(
             messageId,
             _destinationChainSelector,
             _receiver,
@@ -464,9 +472,8 @@ contract CCIPTokenSender is ChainsListerOperator {
             _amount,
             address(linkToken),
             fees
-            );   
-        
-        }
+        );
+    }
 
     function withdraw(address _beneficiary) external {
         uint256 amount = address(this).balance;
@@ -480,47 +487,51 @@ contract CCIPTokenSender is ChainsListerOperator {
         address _token
     ) public onlyOwner {
         uint256 amount = IERC20(_token).balanceOf(address(this));
-        
+
         if (amount == 0) revert NothingToWithdraw();
-        
+
         IERC20(_token).transfer(_beneficiary, amount);
         emit Withdrawal(_beneficiary, _token, amount);
     }
 
-    function buildCcipMessage(
-        address _receiver, 
+    function _buildCcipMessage(
+        address _receiver,
         address _token,
         uint256 _amount,
         address _feeTokenAddress
-    ) public pure returns (Client.EVM2AnyMessage memory message) {
-        
-        Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
+    ) private pure returns (Client.EVM2AnyMessage memory message) {
+        Client.EVMTokenAmount[]
+            memory tokenAmounts = new Client.EVMTokenAmount[](1);
         Client.EVMTokenAmount memory tokenAmount = Client.EVMTokenAmount({
-                token: _token,
-                amount: _amount
-            });
-        
+            token: _token,
+            amount: _amount
+        });
+
         tokenAmounts[0] = tokenAmount;
 
         message = Client.EVM2AnyMessage({
             receiver: abi.encode(_receiver),
-            data:"",
+            data: "",
             tokenAmounts: tokenAmounts,
             extraArgs: Client._argsToBytes(
-            Client.EVMExtraArgsV1({gasLimit: 0})
+                Client.EVMExtraArgsV1({gasLimit: 0})
             ),
             feeToken: _feeTokenAddress
         });
-
     }
 
-    function _ccipFeesManagement(uint64 _destinationChainSelector, Client.EVM2AnyMessage memory message) private returns(uint256 fees) {
+    function _ccipFeesManagement(
+        uint64 _destinationChainSelector,
+        Client.EVM2AnyMessage memory message
+    ) private returns (uint256 fees) {
         fees = router.getFee(_destinationChainSelector, message);
         uint256 currentBalance = linkToken.balanceOf(address(this));
-        if (fees > currentBalance) revert InsufficientBalance(currentBalance, fees);
+        if (fees > currentBalance)
+            revert InsufficientBalance(currentBalance, fees);
         linkToken.approve(address(router), fees);
     }
 }
+
 ```
 
 ### Deploying contracts
