@@ -52,7 +52,7 @@ contract CCIPTokenSender is ChainsListerOperator {
         returns (bytes32 messageId)
     {
         if (_receiver == address(0)) revert InvalidReceiverAddress();
-        Client.EVM2AnyMessage memory message = buildCcipMessage(
+        Client.EVM2AnyMessage memory message = _buildCcipMessage(
             _receiver,
             _token,
             _amount,
@@ -95,12 +95,12 @@ contract CCIPTokenSender is ChainsListerOperator {
         emit Withdrawal(_beneficiary, _token, amount);
     }
 
-    function buildCcipMessage(
+    function _buildCcipMessage(
         address _receiver,
         address _token,
         uint256 _amount,
         address _feeTokenAddress
-    ) public pure returns (Client.EVM2AnyMessage memory message) {
+    ) private pure returns (Client.EVM2AnyMessage memory message) {
         Client.EVMTokenAmount[]
             memory tokenAmounts = new Client.EVMTokenAmount[](1);
         Client.EVMTokenAmount memory tokenAmount = Client.EVMTokenAmount({
