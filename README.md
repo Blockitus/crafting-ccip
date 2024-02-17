@@ -39,7 +39,7 @@
     - [Transferring ERC20, paying with native token](#transferring-erc20-paying-with-native-token)
     - [CCIPTokenSender::transferTokensPayNative function](#cciptokensendertransfertokenspaynative-function)
     - [Deploying CCIPTokenSender.sol](#deploying-cciptokensendersol)
-  - [CONGRATULATIONS :)](#congratulations--1)
+    - [CONGRATULATIONS :)](#congratulations--1)
 
 
 
@@ -871,7 +871,7 @@ We need to repeat the process of [funding](#funding-your-cciptokensender), with 
 After do the avoce you can repeat the process of [transfer tokens](#transfer-tokens).
 
 
-## CONGRATULATIONS :)
+### CONGRATULATIONS :)
 
 You paid the transaction's fees with native coin, in this case with ETH.
 
