@@ -39,7 +39,8 @@
     - [Transferring ERC20, paying with native token](#transferring-erc20-paying-with-native-token)
     - [CCIPTokenSender::transferTokensPayNative function](#cciptokensendertransfertokenspaynative-function)
     - [Deploying CCIPTokenSender.sol](#deploying-cciptokensendersol)
-    - [CONGRATULATIONS :)](#congratulations--1)
+    - [CONGRATULATIONS :) You paid the transaction's fees with native coin, in this case with ETH.](#congratulations--you-paid-the-transactions-fees-with-native-coin-in-this-case-with-eth)
+    - [My own tech](#my-own-tech-1)
 
 
 
@@ -547,6 +548,12 @@ Set up
 ```bash
 source .env
 ```
+Prepare
+
+Below are the constructor arguments to deploy the CCIPTokenSender.sol
+
+- Router address: `0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59`
+- LinkToken address: `0x779877A7B0D9E8603169DdbD7836e478b4624789`
 
 Run
 ```bash
@@ -868,12 +875,28 @@ forge create --rpc-url ethereumSepolia --private-key=$PRIVATE_KEY src/M2/CCIPTok
 
 We need to repeat the process of [funding](#funding-your-cciptokensender), with a difference. Instead of funding with fee Link token we are going to fund with and amount of `0.01` native coin (ETH).
 
-After do the avoce you can repeat the process of [transfer tokens](#transfer-tokens).
+<p align="center">
+<img src="./cciptokensenderhighlighted.png" width="400" alt="puppy-raffle">
+<br/>
+
+After do the above you can repeat the process of [transfer tokens](#transfer-tokens).
 
 
-### CONGRATULATIONS :)
 
-You paid the transaction's fees with native coin, in this case with ETH.
+### CONGRATULATIONS :) You paid the transaction's fees with native coin, in this case with ETH.
+
+### My own tech
+
+If you don't want to walk through the process of building the system (NOT RECOMMENDED, BECAUSE YOU HAVE TO LIVE YOUR OWN EXPERIENCE) and the only thing you want is to test the process of sending tokens through the Land, I'll provide you with the CCIPTokenSender address of my smart contract deployed on Sepolia. You could change the destination chain selector if you want to test something different. Please let me know what you did.
+
+**CCIPTokenSender_ADDRESS**
+`0xC283Ef29016b9fa9d6FDA8223068E78fa168c14C`
+
+**TRX_HASH_CREATION_CONTRACT**
+`0x42a4236ba56917850c3faa8a3f0a31b0ea59d6e2f1ab36e20188ea511ea681b7`
+
+**MessageId**
+`0xb2fe0922dde519203fdc8bb81113e853c8204394d1ad96457cbad04c107d8078`
 
 
-
+[Chainlink_CCIP_Explorer_Transaction](https://ccip.chain.link/msg/0xb2fe0922dde519203fdc8bb81113e853c8204394d1ad96457cbad04c107d8078)
