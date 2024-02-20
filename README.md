@@ -875,7 +875,12 @@ forge create --rpc-url ethereumSepolia --private-key=$PRIVATE_KEY src/M2/CCIPTok
 
 We need to repeat the process of [funding](#funding-your-cciptokensender), with a difference. Instead of funding with fee Link token we are going to fund with and amount of `0.01` native coin (ETH).
 
-After do the avoce you can repeat the process of [transfer tokens](#transfer-tokens).
+<p align="center">
+<img src="./cciptokensenderhighlighted.png" width="400" alt="puppy-raffle">
+<br/>
+
+After do the above you can repeat the process of [transfer tokens](#transfer-tokens).
+
 
 
 ### CONGRATULATIONS :) You paid the transaction's fees with native coin, in this case with ETH.
