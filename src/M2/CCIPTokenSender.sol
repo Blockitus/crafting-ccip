@@ -100,7 +100,7 @@ contract CCIPTokenSender is ChainsListerOperator {
 
         IERC20(_token).approve(address(router), _amount);
 
-        messageId = router.ccipSend(_destinationChainSelector, message);
+        messageId = router.ccipSend{value:fees}(_destinationChainSelector, message);
 
         emit TokensTransferred(
             messageId,
