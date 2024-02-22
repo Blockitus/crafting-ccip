@@ -16,3 +16,6 @@ docs/
 # Other files
 notes.md
 metadata.car
+
+# Other directories
+src/M4/metadata
