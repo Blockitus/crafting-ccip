@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity ^0.8.0;
 
-import {OwnerIsCreator} from "@chainlink/contracts-ccip/src/v0.8/shared/access/OwnerIsCreator.sol";
+import {SenderListerOperator} from "./SenderListerOperator.sol";
 
-contract ChainsListerOperator is OwnerIsCreator {
+contract ChainsListerOperator is SenderListerOperator {
     mapping(uint64 => bool) public whitelistedChains;
 
     error DestinationChainNotWhitelisted(uint64 destinationChainSelector);
