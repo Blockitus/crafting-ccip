@@ -41,6 +41,8 @@
     - [Deploying CCIPTokenSender.sol](#deploying-cciptokensendersol)
     - [CONGRATULATIONS :) You paid the transaction's fees with native coin, in this case with ETH.](#congratulations--you-paid-the-transactions-fees-with-native-coin-in-this-case-with-eth)
     - [My own tech](#my-own-tech-1)
+  - [M4](#m4)
+    - [Transferring ERC20 and instructions](#transferring-erc20-and-instructions)
 
 
 
@@ -664,7 +666,7 @@ function transferTokensPayNative(
 
         IERC20(_token).approve(address(router), _amount);
 
-        messageId = router.ccipSend(_destinationChainSelector, message);
+        messageId = router.ccipSend{value:fees}(_destinationChainSelector, message);
 
         emit TokensTransferred(
             messageId,
@@ -783,7 +785,7 @@ contract CCIPTokenSender is ChainsListerOperator {
 
         IERC20(_token).approve(address(router), _amount);
 
-        messageId = router.ccipSend(_destinationChainSelector, message);
+        messageId = router.ccipSend{value:fees}(_destinationChainSelector, message);
 
         emit TokensTransferred(
             messageId,
@@ -860,6 +862,7 @@ contract CCIPTokenSender is ChainsListerOperator {
         }
     }
 }
+
 ```
 
 ### Deploying CCIPTokenSender.sol
@@ -900,3 +903,15 @@ If you don't want to walk through the process of building the system (NOT RECOMM
 
 
 [Chainlink_CCIP_Explorer_Transaction](https://ccip.chain.link/msg/0xb2fe0922dde519203fdc8bb81113e853c8204394d1ad96457cbad04c107d8078)
+
+## M4
+### Transferring ERC20 and instructions
+
+In this section we are going to send CCIP-BnM token from our source chain to destination chain plus data such as instructions to another contract on the destination chain with the goal to mint an NFT. WOOWW!!!
+
+When you read this, it is notable that you are in another level of developing. 
+
+Let's go to code.
+
+
+
