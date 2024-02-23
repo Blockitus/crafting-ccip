@@ -6,7 +6,7 @@ import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.s
 import {IERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/contracts/interfaces/IERC20.sol";
 import {ChainsListerOperator} from "./ChainsListerOperator.sol";
 
-contract CCIPTokenSender is ChainsListerOperator {
+contract CCIPTokenSenderAndData is ChainsListerOperator {
     IRouterClient router;
     IERC20 linkToken;
 
