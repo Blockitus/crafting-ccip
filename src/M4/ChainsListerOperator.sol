@@ -6,12 +6,12 @@ import {SenderListerOperator} from "./SenderListerOperator.sol";
 contract ChainsListerOperator is SenderListerOperator {
     mapping(uint64 => bool) public whitelistedChains;
 
-    error DestinationChainNotWhitelisted(uint64 destinationChainSelector);
-    error DestinationChainAlreadyWhiteListed(uint64 destinationChainSelector);
+    error chainNotWhitelisted(uint64 destinationChainSelector);
+    error chainAlreadyWhiteListed(uint64 destinationChainSelector);
 
     modifier onlyWhitelistedChain(uint64 _destinationChainSelector) {
         if (!whitelistedChains[_destinationChainSelector])
-            revert DestinationChainNotWhitelisted(_destinationChainSelector);
+            revert chainNotWhitelisted(_destinationChainSelector);
         _;
     }
 
@@ -19,7 +19,7 @@ contract ChainsListerOperator is SenderListerOperator {
         uint64 _destinationChainSelector
     ) external onlyOwner {
         if (whitelistedChains[_destinationChainSelector])
-            revert DestinationChainAlreadyWhiteListed(
+            revert chainAlreadyWhiteListed(
                 _destinationChainSelector
             );
         whitelistedChains[_destinationChainSelector] = true;
@@ -29,7 +29,7 @@ contract ChainsListerOperator is SenderListerOperator {
         uint64 _destinationChainSelector
     ) external onlyOwner {
         if (!whitelistedChains[_destinationChainSelector])
-            revert DestinationChainNotWhitelisted(_destinationChainSelector);
+            revert chainNotWhitelisted(_destinationChainSelector);
         whitelistedChains[_destinationChainSelector] = false;
     }
 }
