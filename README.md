@@ -41,6 +41,16 @@
     - [Deploying CCIPTokenSender.sol](#deploying-cciptokensendersol)
     - [CONGRATULATIONS :) You paid the transaction's fees with native coin, in this case with ETH.](#congratulations--you-paid-the-transactions-fees-with-native-coin-in-this-case-with-eth)
     - [My own tech](#my-own-tech-1)
+  - [M4](#m4)
+    - [Transferring ERC20 and instructions for minting an NFT](#transferring-erc20-and-instructions-for-minting-an-nft)
+    - [Changes on CCIPTokenAndDataSender.sol](#changes-on-cciptokenanddatasendersol)
+    - [Build the BlockitusNFT.sol smart contract](#build-the-blockitusnftsol-smart-contract)
+    - [CCIPTokenAndDataReceiver business logic](#cciptokenanddatareceiver-business-logic)
+    - [Create a new smart contract called SenderListerOperator.sol](#create-a-new-smart-contract-called-senderlisteroperatorsol)
+    - [Deploying smart contracts](#deploying-smart-contracts-1)
+    - [Transferring 1000 CCIIP-BnM token plus minting an NFT.](#transferring-1000-cciip-bnm-token-plus-minting-an-nft)
+  - [CONGRATULATIONS :) You successfully paid for minting an NFT from the source chain Sepolia to the destination chain Fuji](#congratulations--you-successfully-paid-for-minting-an-nft-from-the-source-chain-sepolia-to-the-destination-chain-fuji)
+    - [My own tech](#my-own-tech-2)
 
 
 
@@ -664,7 +674,7 @@ function transferTokensPayNative(
 
         IERC20(_token).approve(address(router), _amount);
 
-        messageId = router.ccipSend(_destinationChainSelector, message);
+        messageId = router.ccipSend{value:fees}(_destinationChainSelector, message);
 
         emit TokensTransferred(
             messageId,
@@ -783,7 +793,7 @@ contract CCIPTokenSender is ChainsListerOperator {
 
         IERC20(_token).approve(address(router), _amount);
 
-        messageId = router.ccipSend(_destinationChainSelector, message);
+        messageId = router.ccipSend{value:fees}(_destinationChainSelector, message);
 
         emit TokensTransferred(
             messageId,
@@ -860,6 +870,7 @@ contract CCIPTokenSender is ChainsListerOperator {
         }
     }
 }
+
 ```
 
 ### Deploying CCIPTokenSender.sol
@@ -900,3 +911,325 @@ If you don't want to walk through the process of building the system (NOT RECOMM
 
 
 [Chainlink_CCIP_Explorer_Transaction](https://ccip.chain.link/msg/0xb2fe0922dde519203fdc8bb81113e853c8204394d1ad96457cbad04c107d8078)
+
+## M4
+### Transferring ERC20 and instructions for minting an NFT 
+
+In this section we are going to send CCIP-BnM token from our source chain to destination chain plus data, such as instructions, to another contract on the destination chain with the goal to mint an NFT. WOWW!!!
+
+When you read this, it is notable that you are on another level of development.
+
+Before starting coding, you need to have some NFT background knowledge, like, for example:
+- How to prepare your assets's metadata to upload to IPFS?
+- How to configure your ERC721 for minting an NFT?
+These are some articles pending to be published on my personal blog.
+
+Okay, if you have those requirements, you can start coding our set of smart contracts.
+
+You need to make some changes on the `CCIPTokenSender.sol` smart contract.
+
+### Changes on CCIPTokenAndDataSender.sol 
+
+Firstly rename the file from CCIPTokenSender.sol to CCIPTokenAndDataSender.sol. Also, in the code, rename the name of the smart contract as shown below:
+
+```diff
+- contract CCIPTokenSender is ChainsListerOperator
++ contract CCIPTokenAndDataSender is ChainsListerOperator 
+```
+
+Secondly we are going to add a new function:
+Place the function below in the body of the `CCIPTokenAndDataSender.sol`.
+
+```javascript
+    function runMintNft() public view returns (bytes memory MINT_NFT) {
+        MINT_NFT = abi.encodeWithSignature("mint(address)", msg.sender);
+    }
+```
+
+Lastly, let's modify the `_buildCcipMessage(address,address,uint256,address)` function to:
+
+```diff
+   function _buildCcipMessage(
+        address _receiver,
+        address _token,
+        uint256 _amount,
+        address _feeTokenAddress
+    ) private pure returns (Client.EVM2AnyMessage memory message) {
+        Client.EVMTokenAmount[]
+            memory tokenAmounts = new Client.EVMTokenAmount[](1);
+        Client.EVMTokenAmount memory tokenAmount = Client.EVMTokenAmount({
+            token: _token,
+            amount: _amount
+        });
+
+        tokenAmounts[0] = tokenAmount;
+
+        message = Client.EVM2AnyMessage({
+            receiver: abi.encode(_receiver),
+-            data: "",
++            data: runMintNft(),
+            tokenAmounts: tokenAmounts,
+            extraArgs: Client._argsToBytes(
+                Client.EVMExtraArgsV1({gasLimit: 0})
+            ),
+            feeToken: _feeTokenAddress
+        });
+    }
+
+```
+
+Okay, our contract is ready to be deployed.
+
+### Build the BlockitusNFT.sol smart contract 
+
+Now, we are going to develop our `BNFT.sol` smart contract.
+1. Create a new file and named as `BNFT.sol`.
+2. Place the code below.
+
+Code
+
+```javascript
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import {OwnerIsCreator} from "@chainlink/contracts-ccip/src/v0.8/shared/access/OwnerIsCreator.sol";
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+
+contract BNFT is ERC721, OwnerIsCreator {
+
+    string constant baseUri =
+        "https://bafybeidvjmeh6pdhon5cytxxfkrvcuzqu7pauewu73u5uqpsp5ry2zt5b4.ipfs.nftstorage.link/1";
+    uint256 internal tokenId;
+
+    constructor() ERC721("BlockitusNFT", "BNFT") {}
+
+    function _baseURI() internal pure override returns (string memory) {
+        return baseUri;
+    }
+
+    function mint(address to) public onlyOwner {
+       unchecked {
+            tokenId++;
+        }
+        _safeMint(to, tokenId);
+        
+    }
+}
+```
+
+
+Yeah, we have built our NFT smart contract minter
+
+### CCIPTokenAndDataReceiver business logic
+
+We alrady have our **BNFT.sol** smart contract. However, we need to add the CCIPTokenAndDataReceiver business logic. To do this, follow the next steps.
+1. Create a new file with the name of `CCIPTokenAndDataReceiver.sol`
+2. Add the code below
+
+Code
+
+```javascript
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+
+import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications/CCIPReceiver.sol";
+import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
+import {BNFT} from "./BNFT.sol";
+import {ChainsListerOperator} from "./ChainsListerOperator.sol";
+
+contract CCIPTokenAndDataReceiver is CCIPReceiver, ChainsListerOperator {
+    BNFT public nft;
+    uint256 price;
+
+    event MintCallSuccessfull(bytes4 function_selector);
+
+    constructor(address _router, uint256 _price) CCIPReceiver(_router) {
+        nft = new BNFT();
+        price = _price;
+    }
+
+    function _ccipReceive(
+        Client.Any2EVMMessage memory message
+    ) 
+        internal
+        onlyWhitelistedChain(message.sourceChainSelector)
+        onlyWhitelistedSenders(abi.decode(message.sender, (address))) 
+        override 
+    {   
+        uint256 amountOfCCIPBnMReceived = message.destTokenAmounts[0].amount;
+        bytes memory dataToCall = message.data;
+        require(amountOfCCIPBnMReceived >= price, "Not enough CCIP-BnM for mint");
+        (bool success, ) = address(nft).call(dataToCall);
+        require(success);
+        emit MintCallSuccessfull(bytes4(dataToCall));
+    }
+}
+```
+
+### Create a new smart contract called SenderListerOperator.sol
+
+We need to increase the security of our receiver contract, to make this, we wiil to add a feature to whitelist the sender that it allows running an instruction. 
+
+1. Create a new file with the name of `SenderListerOperator.sol`
+2. Add the code below
+
+```javascript
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+
+import {OwnerIsCreator} from "@chainlink/contracts-ccip/src/v0.8/shared/access/OwnerIsCreator.sol";
+
+
+contract SenderListerOperator is OwnerIsCreator {
+
+    mapping(address => bool) senders;
+
+    error SenderNotWhitelisted();
+    error SenderAlreadyListed();
+
+    modifier onlyWhitelistedSenders(address _sender) {
+        if(!senders[_sender])revert SenderNotWhitelisted();
+        _;
+    }
+
+    function whitelistSender(address _sender) external onlyOwner {
+        if(senders[_sender])revert SenderAlreadyListed();
+        senders[_sender] = true;
+    }
+
+    function denySender(address _sender) external onlyOwner {
+        if(!senders[_sender]) revert SenderNotWhitelisted();
+        senders[_sender] = false;
+    }
+
+}
+
+```
+
+And add to `ChainsListedOperator.sol` smart contract the logic that I show below.
+
+```diff
++   import {SenderListerOperator} from "./SenderListerOperator.sol";
+-   contract ChainsListerOperator
++   contract ChainsListerOperator is SenderListerOperator 
+```
+
+After making the mentioned changes, we are ready to deploy our `CCIPTokenAndDataReceiver.sol`.
+
+### Deploying smart contracts
+
+Deploy **CCIPTokenAndDataSender.sol**
+
+Prepare 
+
+Source chain: Sepolia
+   1. ROUTER_ADDRESS: `0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59`
+   2. LINKTOKEN_ADDRESS: `0x779877A7B0D9E8603169DdbD7836e478b4624789`
+
+Run
+
+```bash
+forge create --rpc-url ethreumSepolia --private-key=$PRIVATE_KEY src/M4/CCIPTokenAndDataSender.sol:CCIPTokenAndDataSender --constructor-args 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59 0x779877A7B0D9E8603169DdbD7836e478b4624789
+```
+
+Deploy **CCIPTokenAndDataReceiver.sol**
+
+Prepare
+
+Destination chain: Fuji
+    1. ROUTER_ADDRESS: `0xF694E193200268f9a4868e4Aa017A0118C9a8177`
+    2. 1. PRICE: 1000
+
+
+```bash
+forge create --rpc-url avalancheFuji --private-key=$PRIVATE_KEY src/M4/CCIPTokenAndDataReceiver.sol:CCIPTokenAndDataReceiver --constructor-args 0xF694E193200268f9a4868e4Aa017A0118C9a8177 1000
+```
+
+### Transferring 1000 CCIIP-BnM token plus minting an NFT.
+
+Prepare
+
+SOURCE CHAIN:Sepolia
+
+1. Save the address of the CCIPTokenAndDataSender once deployed.
+2. Fund CCIPTokenAndDataSender with 1 Link token and 1000 CCIP-BnM token.
+3. Whitelist the destination-chain-selector calling the `whitelistChain(uint64)` function
+   1. fuji-chain-selector: `14767482510784806043`
+   ```bash
+   cast send <CCIPTokenAndDataSender_ADDRESS> --rpc-url ethereumSepolia --private-key=$PRIVATE_KEY "whitelistChain(uint64)" 14767482510784806043
+   ```
+
+Before running `"transferTokensPayLink(uint64,address,address,uint256)"` we need to prepare our CCIPTokenAndDataReceiver smart contract on the destination chain side. 
+
+DESTINTATION CHAIN:Fuji
+
+1. Save the CCIPTokenAndDataReceiver address. 
+2. Whitelist the source-chain-selector calling the `whitelistChain(uint64)` function
+   1. sepolia-chain-selector: `16015286601757825753`
+   ```bash
+   cast send <CCIPTokenAndDataReceiver_ADDRESS> --rpc-url avalancheFuji --private-key=$PRIVATE_KEY "whitelistChain(uint64)" 16015286601757825753
+   ```
+3. Whitelist the sender calling the `whitelistSender(address)`. Notice, this argument (_sender) it is  the CCIPTokenAndDataSender address that we already have saved.
+   1. sender_address:  `<CCIPTokenAndDataSender_ADDRESS>`
+   ```bash
+   cast send <CCIPTokenAndDataReceiver_ADDRESS> --rpc-url avalancheFuji --private-key=$PRIVATE_KEY "whitelistSender(address)" <CCIPTokenAndDataSender_ADDRESS>`
+   ```
+
+WRAP ALL
+
+Okay we are ready to make our magic! Go ahead and call the `CCIPTokenAndDataSender::transferTokensPayLinkToken(uint64,address,address,uint256)` 
+function in the source chain side. The arguments should be:
+- _destinationChain:`14767482510784806043`
+- _receiver:`<CCIPTokenAndDataReceiver_ADDRESS>` Notice this addes we already have been saved.
+- token: `0xFd57b4ddBf88a4e07fF4e34C487b99af2Fe82a05`
+- amount: `1000`
+
+Run
+
+```bash
+cast send <CCIPTokenAndDataSender_ADDRESS> --rpc-url ethereumSepolia --private-key=$PRIVATE_KEY "transferTokensPayLinkToken(uint64,address,address,uint256)" 14767482510784806043 <CCIPTokenAndDataReceiver_ADDRESS> 0xFd57b4ddBf88a4e07fF4e34C487b99af2Fe82a05 
+100
+```
+
+After making this, you con go to monitor your transaction at [Chainlink CCIP Explorer](https://ccip.chain.link/).
+
+
+## CONGRATULATIONS :) You successfully paid for minting an NFT from the source chain Sepolia to the destination chain Fuji
+
+### My own tech
+
+If you don't want to walk through the process of building the system (NOT RECOMMENDED, BECAUSE YOU HAVE TO LIVE YOUR OWN EXPERIENCE) and the only thing you want is to the NFT minted on the destination chain, I'll provide you with the NFT link on OpenSea of my item minted over Fuji. 
+
+
+
+<p align="center">
+<img src="./bnft.png" width="400" alt="puppy-raffle">
+<br/>
+
+
+[Chainlink_CCIP_Explorer_Transaction](https://ccip.chain.link/msg/0xf93c387b7246963e980066a8ed271ff8bf5a6b4bfd209a9971d8155e1b6d5a46)
+
+[OpenSea NFT link](https://testnets.opensea.io/assets/avalanche-fuji/0x306d707884cffecb64a86c40123ea2c4cf070a39/1)
+
+SOURCE CHAIN: SEPOLIA
+**CCIPTokenAndDataSender_ADDRESS**
+`0x475f2D5015Ac9b84984709c43E926cFF9c939d94`
+
+**TRX_HASH_CREATION_CONTRACT**
+`0xec6076372d630502a5b54692ca5297ef13d7a15a4f4c82c4cd93c73607d54a92`
+
+DESTINATION CHAIN: FUJI
+**CCIPTokenAndDataReceiver_ADDRESS**
+`0xD3E91064c4C0d5eF237e35A3e0be0B8E02cd7FDf`
+
+**TRX_HASH_CREATION_CONTRACT**
+`0x171a2699694ea4aad6919b6e2fa00c5ee8cba27c2c415ce70057077a45cfba51`
+
+**BlockitusNFT_ADDRESS**
+`0x306D707884cFFECB64a86C40123EA2C4cF070A39`
+
+
+
+
