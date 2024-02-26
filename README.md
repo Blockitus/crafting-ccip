@@ -42,7 +42,7 @@
     - [CONGRATULATIONS :) You paid the transaction's fees with native coin, in this case with ETH.](#congratulations--you-paid-the-transactions-fees-with-native-coin-in-this-case-with-eth)
     - [My own tech](#my-own-tech-1)
   - [M4](#m4)
-    - [Transferring ERC20 and instructions](#transferring-erc20-and-instructions)
+    - [Transferring ERC20 and instructions for minting an NFT](#transferring-erc20-and-instructions-for-minting-an-nft)
     - [Changes on CCIPTokenAndDataSender.sol](#changes-on-cciptokenanddatasendersol)
     - [Build the BlockitusNFT.sol smart contract](#build-the-blockitusnftsol-smart-contract)
     - [CCIPTokenAndDataReceiver business logic](#cciptokenanddatareceiver-business-logic)
@@ -913,7 +913,7 @@ If you don't want to walk through the process of building the system (NOT RECOMM
 [Chainlink_CCIP_Explorer_Transaction](https://ccip.chain.link/msg/0xb2fe0922dde519203fdc8bb81113e853c8204394d1ad96457cbad04c107d8078)
 
 ## M4
-### Transferring ERC20 and instructions
+### Transferring ERC20 and instructions for minting an NFT 
 
 In this section we are going to send CCIP-BnM token from our source chain to destination chain plus data, such as instructions, to another contract on the destination chain with the goal to mint an NFT. WOWW!!!
 
